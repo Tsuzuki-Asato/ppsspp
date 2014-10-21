@@ -77,6 +77,10 @@ private:
 	UI::EventReturn OnRenderingMode(UI::EventParams &e);
 	UI::EventReturn OnRenderingBackend(UI::EventParams &e);
 	UI::EventReturn OnJitAffectingSetting(UI::EventParams &e);
+#ifdef _WIN32
+	UI::EventReturn OnSavePathCreating(UI::EventParams &e);
+	UI::EventReturn OnSavePathDeleting(UI::EventParams &e);
+#endif
 	UI::EventReturn OnSoftwareRendering(UI::EventParams &e);
 	UI::EventReturn OnHardwareTransform(UI::EventParams &e);
 

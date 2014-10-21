@@ -51,11 +51,20 @@
 
 #if defined(_WIN32)
 #include "Windows/WndMainWindow.h"
+#include <io.h>
+#include <shlobj.h>
+#include "util/text/utf8.h"
+#include <iostream>
+#include <fstream>
+#include <stdio.h>
+using namespace std;
 #endif
 
 #ifdef IOS
 extern bool iosCanUseJit;
 #endif
+
+bool installed = false;
 
 GameSettingsScreen::GameSettingsScreen(std::string gamePath, std::string gameID)
 	: UIDialogScreenWithGameBackground(gamePath), gameID_(gameID), enableReports_(false) {
@@ -390,6 +399,44 @@ void GameSettingsScreen::CreateViews() {
 #if defined(USING_WIN_UI)
 	systemSettings->Add(new CheckBox(&g_Config.bBypassOSKWithKeyboard, s->T("Enable Windows native keyboard", "Enable Windows native keyboard")));
 #endif
+#if defined(_WIN32)	
+	wchar_t myDocumentsPath[MAX_PATH];
+	const HRESULT result = SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, myDocumentsPath);
+	const std::string PPSSPPpath = File::GetExeDirectory();
+	const std::string installedFile = PPSSPPpath + "installed.txt";
+	const std::string path = File::GetExeDirectory();
+	installed = File::Exists(installedFile);
+	if (!installed && result == S_OK){
+		ofstream myfile;
+		myfile.open(PPSSPPpath + "installedTEMP.txt");
+		if (myfile.is_open()){
+			//myfile << "";
+			myfile.close();
+			// Hide the setting whether cannot create file
+			systemSettings->Add(new CheckBox(&installed, s->T("Save path in My Documents", "Save path in My Documents")))->OnClick.Handle(this, &GameSettingsScreen::OnJitAffectingSetting);;
+		}
+	}
+	else {
+		if (installed && (result == S_OK))	{
+			std::ifstream inputFile(ConvertUTF8ToWString(installedFile));
+		if (!inputFile.fail() && inputFile.is_open()) {
+			std::string tempString;
+
+			std::getline(inputFile, tempString);
+
+			// Skip UTF-8 encoding bytes if there are any. There are 3 of them.
+			if (tempString.substr(0, 3) == "\xEF\xBB\xBF")
+				tempString = tempString.substr(3);
+			if (tempString == "")
+				systemSettings->Add(new CheckBox(&installed, s->T("Save path in My Document", "Save path in My Documents")))->OnClick.Handle(this, &GameSettingsScreen::OnSavePathDeleting);
+			else				
+				systemSettings->Add(new CheckBox(&installed, s->T("Save path in install.txt", "Save path in install.txt")))->OnClick.Handle(this, &GameSettingsScreen::OnSavePathDeleting);
+		}
+		inputFile.close();
+		systemSettings->Add(new CheckBox(&installed, s->T("Save in Document", "Save in My Documents")))->OnClick.Handle(this, &GameSettingsScreen::OnJitAffectingSetting);
+		}
+	}	
+#endif
 
 	systemSettings->Add(new ItemHeader(s->T("Developer Tools")));
 	systemSettings->Add(new Choice(s->T("Developer Tools")))->OnClick.Handle(this, &GameSettingsScreen::OnDeveloperTools);
@@ -513,6 +560,33 @@ UI::EventReturn GameSettingsScreen::OnJitAffectingSetting(UI::EventParams &e) {
 	NativeMessageReceived("clear jit", "");
 	return UI::EVENT_DONE;
 }
+
+#ifdef _WIN32
+
+UI::EventReturn GameSettingsScreen::OnSavePathCreating(UI::EventParams &e) {
+	const std::string PPSSPPpath = File::GetExeDirectory();
+	ofstream myfile;
+	myfile.open(PPSSPPpath + "installed.txt");
+	if (myfile.is_open()){
+		//myfile << "";
+		myfile.close();
+	}
+	wchar_t myDocumentsPath[MAX_PATH];
+	const HRESULT result = SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, myDocumentsPath);
+	const std::string myDocsPath = ConvertWStringToUTF8(myDocumentsPath) + "/PPSSPP/";
+	g_Config.memStickDirectory = myDocsPath;
+	return UI::EVENT_DONE;
+}
+
+UI::EventReturn GameSettingsScreen::OnSavePathDeleting(UI::EventParams &e) {	
+	const std::string PPSSPPpath = File::GetExeDirectory();
+	const std::string installedtxtPath = PPSSPPpath + "installed.txt";
+	//if (DeleteFile(L,PPSSPPpath + "installed.txt"))
+	//std::remove(PPSSPPpath + "installed.txt");
+	return UI::EVENT_DONE;
+}
+
+#endif
 
 UI::EventReturn GameSettingsScreen::OnClearRecents(UI::EventParams &e) {
 	g_Config.recentIsos.clear();
