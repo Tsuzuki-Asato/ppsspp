@@ -410,10 +410,10 @@ void GameSettingsScreen::CreateViews() {
 		ofstream myfile;
 		myfile.open(PPSSPPpath + "installedTEMP.txt");
 		if (myfile.is_open()){
-			//myfile << "";
 			myfile.close();
+			File::Delete("installedTEMP.txt");
 			// Hide the setting whether cannot create file
-			systemSettings->Add(new CheckBox(&installed, s->T("Save path in My Documents", "Save path in My Documents")))->OnClick.Handle(this, &GameSettingsScreen::OnJitAffectingSetting);;
+			systemSettings->Add(new CheckBox(&installed, s->T("Save path in My Documents", "Save path in My Documents")))->OnClick.Handle(this, &GameSettingsScreen::OnSavePathCreating);
 		}
 	}
 	else {
@@ -581,8 +581,7 @@ UI::EventReturn GameSettingsScreen::OnSavePathCreating(UI::EventParams &e) {
 UI::EventReturn GameSettingsScreen::OnSavePathDeleting(UI::EventParams &e) {	
 	const std::string PPSSPPpath = File::GetExeDirectory();
 	const std::string installedtxtPath = PPSSPPpath + "installed.txt";
-	//if (DeleteFile(L,PPSSPPpath + "installed.txt"))
-	//std::remove(PPSSPPpath + "installed.txt");
+	File::Delete(PPSSPPpath + "installed.txt");
 	return UI::EVENT_DONE;
 }
 
